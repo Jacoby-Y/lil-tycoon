@@ -1,3 +1,6 @@
+## v0.3
+- Reworking entire ECS System
+
 ## v0.2
 - Reworked code
 - Added orb value multipliers

@@ -1,0 +1,5 @@
+[
+	{ "id": "test_trigger", "Position": [100, 100], "Trigger": [50, 50] },
+
+	{ "id": "dropper_1", "Position": [860, 215], "Collider": [75, 40] }
+]
