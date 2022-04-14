@@ -73,14 +73,6 @@ var app = (function () {
     function children(element) {
         return Array.from(element.childNodes);
     }
-    function set_style(node, key, value, important) {
-        if (value === null) {
-            node.style.removeProperty(key);
-        }
-        else {
-            node.style.setProperty(key, value, important ? 'important' : '');
-        }
-    }
     function custom_event(type, detail, bubbles = false) {
         const e = document.createEvent('CustomEvent');
         e.initCustomEvent(type, bubbles, false, detail);
@@ -444,37 +436,6 @@ var app = (function () {
         return { set, update, subscribe };
     }
 
-    const timer = writable(0);
-    setInterval(() => { 
-    	timer.update((v)=>(v+1)%30); 
-    	job_m.update();
-    }, 1000/30);
-
-    const job_m = {
-    	jobs: [],
-    	add(func, ticks) {
-    		this.jobs.push({ func, ticks });
-    	},
-    	update() {
-    		for (let i = this.jobs.length-1; i >= 0; i--) {
-    			const job = this.jobs[i];
-    			job.ticks--;
-    			if (job.ticks <= 0) {
-    				job.func();
-    				this.jobs.splice(i, 1);
-    			}
-    		}
-    	}
-    };
-
-    const mouse = {
-    	x: -1, y: -1,
-    	hover: false,
-    	down: false,
-    };
-
-    const cash = writable(0);
-
     /** @type {CanvasRenderingContext2D}*/
     let ctx;
     const set_ctx = (_ctx)=>{ 
@@ -539,6 +500,188 @@ var app = (function () {
     	reset
     };
 
+    /** @type {HTMLCanvasElement}*/
+    const canvas = writable(null);
+    let w = 0, h = 0;
+    canvas.subscribe((v)=>{
+    	if (v != null) {
+    		w = v.width;
+    		h = v.height;
+    	}
+    });
+
+    const timer = writable(0);
+    setInterval(() => { 
+    	timer.update((v)=>(v+1)%30); 
+    	job_m.update();
+    }, 1000/30);
+
+    const job_m = {
+    	jobs: [],
+    	add(func, ticks) {
+    		this.jobs.push({ func, ticks });
+    	},
+    	update() {
+    		for (let i = this.jobs.length-1; i >= 0; i--) {
+    			const job = this.jobs[i];
+    			job.ticks--;
+    			if (job.ticks <= 0) {
+    				job.func();
+    				this.jobs.splice(i, 1);
+    			}
+    		}
+    	}
+    };
+
+    const mouse = {
+    	x: -1, y: -1,
+    	hover: false,
+    	down: false,
+    };
+
+    const player = {
+    	x: 50, y: 50, size: 30,
+    	update() {
+    		const [ pw, ph ] = [ this.size, this.size ];
+    		
+    		this.x += contr.x*7;
+    		this.y += contr.y*7;
+    		if (this.x < 0) this.x = 0;
+    		if (this.y < 0) this.y = 0;
+    		if (this.x+pw > w) this.x = w-pw;
+    		if (this.y+ph > h) this.y = h-ph;
+    	},
+    	draw() { draw.rect(this.x, this.y, this.size, this.size, "white"); }
+    };
+    const contr = {
+    	a: false, d: false,
+    	w: false, s: false,
+    	e: false,
+    	get x() {
+    		const horz = (this.a ? -1 : 0) + (this.d ? 1 : 0);
+    		const vert = (this.w ? -1 : 0) + (this.s ? 1 : 0);
+    		if (horz != 0 && vert != 0)
+    			return 0.707 * horz;
+    		return horz;
+    	},
+    	get y() {
+    		const horz = (this.a ? -1 : 0) + (this.d ? 1 : 0);
+    		const vert = (this.w ? -1 : 0) + (this.s ? 1 : 0);
+    		if (horz != 0 && vert != 0)
+    			return 0.707 * vert;
+    		return vert;
+    	}
+    };
+
+    const cash = writable(0);
+
+    const entity_m = (()=>{
+    	const list = [];
+
+    	return {
+    		new(ent) {
+    			list.push(ent);
+    		},
+    		get last() { return list.at(-1); },
+    		update() {
+    			for (let i = 0; i < list.length; i++) {
+    				const ent = list[i];
+    				for (const k in ent) {
+    					if (!Object.hasOwnProperty.call(ent, k) || Systems[k] == undefined) continue;
+    					const v = ent[k];
+    					Systems[k](v, ent);
+    				}
+    			}
+    		},
+    	}
+    })();
+
+    class Entity {
+    	constructor(options={ tag: "none", id: "none" }) {
+    		this.tag = options.tag ?? "none";
+    		this.id = options.id ?? "none";
+    		entity_m.new(this);
+    	}
+    	set components(list) {
+    		for (let i = 0; i < list.length; i++) {
+    			const comp = list[i]?.constructor?.name;
+    			if (comp == undefined) continue;
+    			this[comp] = list[i];
+    		}
+    	}
+    }
+
+    const check_overlap = (x1, y1, w1, h1, x2, y2, w2, h2)=>{
+    	return (
+    		x1 + w1 >= x2 && x1 <= x2 + w2 && y1 + h1 >= y2 && y1 <= y2 + h2
+    	);
+    };
+    const Components = {
+    	Position: class Position {
+    		constructor(x,y) {
+    			this.x = x;
+    			this.y = y;
+    		}
+    	},
+    	Graphic: class Graphic {
+    		constructor(draw_fn=()=>{}) {
+    			this.draw = draw_fn;
+    		}
+    	},
+    	Collider: class Collider {
+    		constructor(w, h) {
+    			this.w = w;
+    			this.h = h;
+    		}
+    	},
+    	Trigger: class Trigger {
+    		constructor(w=10, h=10, color={ on: "#ff6b0099", off: "#ff000099" }) {
+    			this.w = w;
+    			this.h = h;
+    			this.color = color;
+    		}
+    	}
+    };
+    const Systems = {
+    	Position(pos, ent) { },
+    	Graphic(gr, ent) {
+    		if (ent.Position != undefined) draw.transform(ent.Position.x, ent.Position.y);
+    		gr.draw(ent);
+    		draw.reset();
+    	},
+    	Collider(col, ent) {
+    		const { x, y, w, h, on_hit } = col;
+    		const { color, fill } = col;
+    		const [ pw, ph ] = [ player.size, player.size ];
+    		if (check_overlap(x,y,w,h, player.x,player.y,pw,ph)) {
+    			if (!col.hit) {
+    				on_hit(col);
+    				col.hit = true;
+    			}
+    			const to_left = player.x+pw - x;
+    			const to_right = x+w - player.x;
+    			const to_top = player.y+ph - y;
+    			const to_bottom = y+h - player.y;
+    			const closest = Math.min(to_left, to_right, to_top, to_bottom);
+
+    			if (closest == to_top) player.y = y-player.size;
+    			if (closest == to_bottom) player.y = y+h;
+    			if (closest == to_left) player.x = x-player.size;
+    			if (closest == to_right) player.x = x+w;
+    		} else if (col.hit) col.hit = false;
+    		draw.rect(x, y, w, h, color, fill);
+    	},
+    	Trigger(trig, ent) {
+    		if (ent.Position == undefined) throw `Entities with Triggers need positions!\nId: ${ent.id}, Tag: ${ent.tag}`
+    		const { x, y } = ent.Position;
+    		const { w, h } = trig;
+    		const color = check_overlap(x,y, w,h, player.x, player.y, player.size, player.size) ? trig.color.on : trig.color.off;
+    		draw.rect(x,y, w, h, color);
+    	},
+    };
+
+    var entities = [{id:"test_trigger",Position:[100,100],Trigger:[50,50]},{id:"dropper_1",Position:[860,215],Collider:[75,40]}];
+
     /* src/main/Game.svelte generated by Svelte v3.47.0 */
 
     const { Object: Object_1, console: console_1 } = globals;
@@ -551,8 +694,6 @@ var app = (function () {
     	let h3;
     	let t1;
     	let t2;
-    	let t3;
-    	let div;
 
     	const block = {
     		c: function create() {
@@ -561,20 +702,14 @@ var app = (function () {
     			t0 = space();
     			h3 = element("h3");
     			t1 = text("Cash: ");
-    			t2 = text(/*$cash*/ ctx[4]);
-    			t3 = space();
-    			div = element("div");
+    			t2 = text(/*$cash*/ ctx[2]);
     			attr_dev(canvas_1, "class", "svelte-1f585e7");
-    			add_location(canvas_1, file$1, 401, 1, 12657);
+    			add_location(canvas_1, file$1, 113, 1, 3007);
     			attr_dev(h3, "id", "cash");
     			attr_dev(h3, "class", "svelte-1f585e7");
-    			add_location(h3, file$1, 402, 1, 12695);
-    			attr_dev(div, "id", "trigger-info");
-    			set_style(div, "display", /*on_trigger*/ ctx[2] ? "block" : "none");
-    			attr_dev(div, "class", "svelte-1f585e7");
-    			add_location(div, file$1, 403, 1, 12729);
+    			add_location(h3, file$1, 114, 1, 3046);
     			attr_dev(main_1, "class", "svelte-1f585e7");
-    			add_location(main_1, file$1, 400, 0, 12632);
+    			add_location(main_1, file$1, 111, 0, 2933);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -582,30 +717,22 @@ var app = (function () {
     		m: function mount(target, anchor) {
     			insert_dev(target, main_1, anchor);
     			append_dev(main_1, canvas_1);
-    			/*canvas_1_binding*/ ctx[5](canvas_1);
+    			/*canvas_1_binding*/ ctx[3](canvas_1);
     			append_dev(main_1, t0);
     			append_dev(main_1, h3);
     			append_dev(h3, t1);
     			append_dev(h3, t2);
-    			append_dev(main_1, t3);
-    			append_dev(main_1, div);
-    			/*div_binding*/ ctx[6](div);
-    			/*main_1_binding*/ ctx[7](main_1);
+    			/*main_1_binding*/ ctx[4](main_1);
     		},
     		p: function update(ctx, [dirty]) {
-    			if (dirty & /*$cash*/ 16) set_data_dev(t2, /*$cash*/ ctx[4]);
-
-    			if (dirty & /*on_trigger*/ 4) {
-    				set_style(div, "display", /*on_trigger*/ ctx[2] ? "block" : "none");
-    			}
+    			if (dirty & /*$cash*/ 4) set_data_dev(t2, /*$cash*/ ctx[2]);
     		},
     		i: noop,
     		o: noop,
     		d: function destroy(detaching) {
     			if (detaching) detach_dev(main_1);
-    			/*canvas_1_binding*/ ctx[5](null);
-    			/*div_binding*/ ctx[6](null);
-    			/*main_1_binding*/ ctx[7](null);
+    			/*canvas_1_binding*/ ctx[3](null);
+    			/*main_1_binding*/ ctx[4](null);
     		}
     	};
 
@@ -623,15 +750,15 @@ var app = (function () {
     const background_color = "#3d6b32";
 
     function instance$1($$self, $$props, $$invalidate) {
+    	let $canvas;
     	let $cash;
+    	validate_store(canvas, 'canvas');
+    	component_subscribe($$self, canvas, $$value => $$invalidate(1, $canvas = $$value));
     	validate_store(cash, 'cash');
-    	component_subscribe($$self, cash, $$value => $$invalidate(4, $cash = $$value));
+    	component_subscribe($$self, cash, $$value => $$invalidate(2, $cash = $$value));
     	let { $$slots: slots = {}, $$scope } = $$props;
     	validate_slots('Game', slots, []);
     	let main;
-
-    	/** @type {HTMLCanvasElement}*/
-    	let canvas;
 
     	/** @type {CanvasRenderingContext2D}*/
     	let ctx;
@@ -648,18 +775,24 @@ var app = (function () {
     	//#endregion
     	//#region | Main Stuff
     	const main_loop = v => {
+    		if (!step && pause) return;
+    		if (step) step = false;
     		ctx.fillStyle = background_color;
     		ctx.fillRect(0, 0, w, h);
 
     		// triggers.update();
-    		player.update();
-
-    		entities.update();
-    		player.draw();
+    		try {
+    			player.update();
+    			entity_m.update();
+    			player.draw();
+    		} catch(error) {
+    			console.log(error);
+    			pause = true;
+    		}
     	};
 
     	onMount(() => {
-    		ctx = canvas.getContext("2d");
+    		ctx = $canvas.getContext("2d");
     		draw.set_ctx(ctx);
 
     		timer.subscribe(v => {
@@ -667,695 +800,71 @@ var app = (function () {
     			main_loop();
     		});
 
-    		$$invalidate(1, canvas.width = main.clientWidth, canvas);
-    		$$invalidate(1, canvas.height = main.clientHeight, canvas);
-    		[w, h] = [canvas.width, canvas.height];
+    		set_store_value(canvas, $canvas.width = main.clientWidth, $canvas);
+    		set_store_value(canvas, $canvas.height = main.clientHeight, $canvas);
+    		[w, h] = [$canvas.width, $canvas.height];
 
-    		$$invalidate(
-    			1,
-    			canvas.onmouseleave = () => {
+    		set_store_value(
+    			canvas,
+    			$canvas.onmouseleave = () => {
     				mouse.hover = false;
     			},
-    			canvas
+    			$canvas
     		);
 
-    		$$invalidate(
-    			1,
-    			canvas.onmousemove = e => {
+    		set_store_value(
+    			canvas,
+    			$canvas.onmousemove = e => {
     				[mouse.x, mouse.y] = [e.layerX, e.layerY];
     			},
-    			canvas
+    			$canvas
     		);
 
-    		$$invalidate(
-    			1,
-    			canvas.onmousedown = e => {
+    		set_store_value(
+    			canvas,
+    			$canvas.onmousedown = e => {
     				[e.layerX, e.layerY];
     				mouse.down = true;
     			},
-    			canvas
+    			$canvas
     		);
 
-    		$$invalidate(
-    			1,
-    			canvas.onmouseup = e => {
+    		set_store_value(
+    			canvas,
+    			$canvas.onmouseup = e => {
     				mouse.down = false;
     			},
-    			canvas
+    			$canvas
     		);
     	});
 
-    	const check_overlap = (x1, y1, w1, h1, x2, y2, w2, h2) => {
-    		return x1 + w1 >= x2 && x1 <= x2 + w2 && y1 + h1 >= y2 && y1 <= y2 + h2;
-    	};
-
-    	const player = {
-    		x: 50,
-    		y: 50,
-    		size: 30,
-    		update() {
-    			const [pw, ph] = [this.size, this.size];
-    			this.x += contr.x * 7;
-    			this.y += contr.y * 7;
-    			if (this.x < 0) this.x = 0;
-    			if (this.y < 0) this.y = 0;
-    			if (this.x + pw > w) this.x = w - pw;
-    			if (this.y + ph > h) (this.y = h - ph, console.log(`py: ${this.y}, h: ${h}`));
-    		},
-    		draw() {
-    			draw.rect(this.x, this.y, this.size, this.size, "white");
-    		}
-    	};
-
     	//#endregion
-    	//#region | Entities
-    	const entities = {
-    		list: [],
-    		funcs: {},
-    		add(data) {
-    			this.list.push(data);
-    		},
-    		get_all(tag = "tag") {
-    			const query = [];
+    	// new Entity().components = [
+    	// 	new comps.Position(10, 10),
+    	// 	new comps.Graphic(()=> draw.circle(0,0, 5, "red")),
+    	// ];
+    	for (let i = 0; i < entities.length; i++) {
+    		const obj = entities[i];
 
-    			for (let i = 0; i < this.list.length; i++) {
-    				const ent = this.list[i];
-    				if (ent.tag.includes(tag)) query.push(ent);
-    			}
+    		// const ent = new Entity({ tag: obj.tag, id: obj.id });
+    		let components = [];
 
-    			return query;
-    		},
-    		gid(id) {
-    			for (let i = 0; i < this.list.length; i++) {
-    				const ent = this.list[i];
-    				if (ent.id == id) return ent;
-    			}
+    		let tag_id = {};
 
-    			return null;
-    		},
-    		bind(tag = "tag", func = (ent = {}) => {
-    			
-    		}) {
-    			this.funcs[tag] = func;
-    		},
-    		update() {
-    			const to_dest = [];
-
-    			for (let i = 0; i < this.list.length; i++) {
-    				const ent = this.list[i];
-
-    				if (ent.destroy === true) {
-    					to_dest.push(i);
-    					continue;
-    				}
-
-    				if (ent.enabled === false) continue;
-    				if (ent.tag.length <= 0) return;
-
-    				for (let j = 0; j < ent.tag.split(" ").length; j++) {
-    					const tag = ent.tag.split(" ")[j];
-    					if (typeof this.funcs[tag] == "function") this.funcs[tag](ent);
-    				}
-    			}
-
-    			if (to_dest.length <= 0) return;
-    			to_dest.reverse();
-
-    			for (let j = 0; j < to_dest.length; j++) {
-    				const i = to_dest[j];
-    				this.list.splice(i, 1);
-    			}
-    		},
-    		update_order(...tags) {
-    			const build = [];
-
-    			for (let i = 0; i < tags.length; i++) {
-    				const tag = tags[i];
-    				build = build.concat(this.get_all(tag));
-    			}
-
-    			this.list = build;
-    		},
-    		apply(index, obj) {
-    			const ent = this.list.at(index);
-
-    			for (const k in obj) {
-    				if (!Object.hasOwnProperty.call(obj, k)) continue;
-    				const v = obj[k];
-    				ent[k] = v;
-    			}
-
-    			return ent;
-    		}
-    	};
-
-    	entities.bind("collider", col => {
-    		const { x, y, w, h, on_hit } = col;
-    		const { color, fill } = col;
-    		const [pw, ph] = [player.size, player.size];
-
-    		if (check_overlap(x, y, w, h, player.x, player.y, pw, ph)) {
-    			if (!col.hit) {
-    				on_hit(col);
-    				col.hit = true;
-    			}
-
-    			const to_left = player.x + pw - x;
-    			const to_right = x + w - player.x;
-    			const to_top = player.y + ph - y;
-    			const to_bottom = y + h - player.y;
-    			const closest = Math.min(to_left, to_right, to_top, to_bottom);
-
-    			if (closest == to_top) {
-    				player.y = y - player.size;
-    			}
-
-    			if (closest == to_bottom) {
-    				player.y = y + h;
-    			}
-
-    			if (closest == to_left) {
-    				player.x = x - player.size;
-    			}
-
-    			if (closest == to_right) {
-    				player.x = x + w;
-    			}
-    		} else if (col.hit) col.hit = false;
-
-    		draw.rect(x, y, w, h, color, fill);
-    	});
-
-    	entities.bind("dropper", drop => {
-    		const { x, y } = drop.drop_at;
-
-    		if (orbs.ticks <= 0) {
-    			orbs.list.push({ x, y, collect: false, lvl: 0 });
-    		} // console.log(orbs);
-    	});
-
-    	entities.bind("trigger", trig => {
-    		const { x, y, w, h, enter, leave } = trig;
-    		const { color, enter_color, fill, width } = trig.style;
-
-    		if (check_overlap(x, y, w, h, player.x, player.y, player.size, player.size)) {
-    			if (!trig.entered) {
-    				enter(trig);
-    				trig.entered = true;
-    				if (typeof trig.trigger_info == "string") set_trigger_info(trig, trig.trigger_info);
-    			}
-
-    			// on_trigger = true;
-    			draw.rect(x, y, w, h, enter_color, fill, width);
-    		} else {
-    			if (trig.entered) {
-    				leave(trig);
-    				trig.entered = false;
-    				if (typeof trig.trigger_info == "string") $$invalidate(2, on_trigger = false);
-    			}
-
-    			draw.rect(x, y, w, h, color, fill, width);
-    		}
-    	});
-
-    	const orb_lvl_colors = [
-    		"#fff",
-    		"#ff8282",
-    		"#ffb482",
-    		"#fcff82",
-    		"#a9ff82",
-    		"#82ffbb",
-    		"#82f3ff",
-    		"#82aaff",
-    		"#a782ff",
-    		"#ff82fc"
-    	];
-
-    	entities.bind("orbs", orbs => {
-    		const { list } = orbs;
-
-    		for (let i = 0; i < list.length; i++) {
-    			const orb = list[list.length - i - 1];
-    			draw.circle(orb.x, orb.y, 5, orb_lvl_colors[orb.lvl]);
-
-    			if (orb.x < 920) orb.lvl += multiply("x", orb.x, ++orb.x); else if (orb.y < 510) orb.lvl += multiply("y", orb.y, ++orb.y); else {
-    				orb.collect = true;
-    				set_store_value(cash, $cash += orb.lvl, $cash);
-    			}
+    		for (const k in obj) {
+    			if (!Object.hasOwnProperty.call(obj, k)) continue;
+    			const v = obj[k];
+    			if (k == "tag") tag_id.tag = v;
+    			if (k == "id") tag_id.id = v;
+    			if (Components[k] == undefined || !Array.isArray(v)) continue;
+    			components.push(new Components[k](...v));
     		}
 
-    		// orbs.list = orbs.list.filter( orb => orb.collect == false );
-    		for (let i = list.length - 1; i >= 0; i--) {
-    			const orb = list[i];
+    		const new_ent = new Entity(tag_id);
+    		new_ent.components = components;
+    	}
 
-    			if (orb.collect === true) {
-    				orbs.list.splice(i, 1);
-    			}
-    		}
-
-    		if (orbs.ticks <= 0) {
-    			// list.push({
-    			// 	x: 920,
-    			// 	y: 55,
-    			// 	collect: false,
-    			// });
-    			orbs.ticks = 60;
-    		} // console.log(list);
-
-    		orbs.ticks--;
-    	});
-
-    	const multiply = (xy, pos1, pos2) => {
-    		const mults = entities.get_all("multiplier");
-
-    		for (const mult of mults) {
-    			if (mult.xy != xy || mult.enabled === false) continue;
-
-    			if (pos1 <= mult[xy] + mult.h / 2 && pos2 > mult[xy] + mult.h / 2) {
-    				return 1;
-    			}
-    		}
-
-    		return 0;
-    	};
-
-    	entities.bind("multiplier", mult => {
-    		
-    	});
-
-    	//#endregion
-    	//#region | Triggers
-    	let on_trigger = false;
-
-    	/** @type HTMLElement */
-    	let trigger_info;
-
-    	const set_trigger_info = (trig, text) => {
-    		$$invalidate(2, on_trigger = true);
-    		$$invalidate(3, trigger_info.style.left = trig.x + trig.w / 2 + "px", trigger_info);
-    		$$invalidate(3, trigger_info.style.top = trig.y + trig.h + 10 + "px", trigger_info);
-    		$$invalidate(3, trigger_info.innerText = text, trigger_info);
-    	}; // trigger_info.style.display = "block";
-
-    	const triggers = {
-    		list: [],
-    		add(x = 10, y = 10, w = 10, h = 10, callbacks = {
-    			enter: () => {
-    				
-    			},
-    			leave: () => {
-    				
-    			},
-    			activate: () => {
-    				
-    			}
-    		}, style = {
-    			color: "#ff000066",
-    			enter_color: "#ff000066",
-    			fill: true,
-    			width: 1
-    		}) {
-    			entities.add({
-    				tag: "trigger",
-    				x,
-    				y,
-    				w,
-    				h,
-    				enter: callbacks.enter ?? (() => {
-    					
-    				}),
-    				leave: callbacks.leave ?? (() => {
-    					
-    				}),
-    				activate: callbacks.activate ?? (() => {
-    					
-    				}),
-    				entered: false,
-    				style: {
-    					color: style.color ?? "#ff000066",
-    					enter_color: style.enter_color ?? "#ff000066",
-    					fill: style.fill ?? true,
-    					width: style.width ?? 1
-    				}
-    			});
-    		},
-    		press_e() {
-    			for (const trig of entities.get_all("trigger")) {
-    				if (trig.entered) trig.activate(trig);
-    				if (trig.destroy == true || trig.enabled == false) $$invalidate(2, on_trigger = false);
-    			}
-    		}
-    	};
-
-    	triggers.add(
-    		100,
-    		100,
-    		50,
-    		50,
-    		{
-    			activate(t) {
-    				t.destroy = true;
-    			}
-    		},
-    		{ color: "#ff000099" }
-    	);
-
-    	void entities.apply(-1, {
-    		id: "test_trigger",
-    		trigger_info: "Testing Testing 123"
-    	});
-
-    	triggers.add(800, 40, 30, 30, {}, {
-    		color: "#ff000099",
-    		enter_color: "#ff6b0099"
-    	});
-
-    	void entities.apply(-1, {
-    		id: "drop_trigger_1",
-    		trigger_info: "Dropper 1"
-    	});
-
-    	triggers.add(
-    		800,
-    		140,
-    		30,
-    		30,
-    		{
-    			activate(t) {
-    				entities.gid("dropper_2").enabled = entities.gid("drop_trigger_2").enabled = t.destroy = true;
-    			}
-    		},
-    		{
-    			color: "#ff000099",
-    			enter_color: "#ff6b0099"
-    		}
-    	);
-
-    	void entities.apply(-1, {
-    		id: "unlock_drop_trigger_2",
-    		trigger_info: "Unlock Dropper 2"
-    	});
-
-    	triggers.add(
-    		800,
-    		240,
-    		30,
-    		30,
-    		{
-    			activate(t) {
-    				entities.gid("dropper_3").enabled = entities.gid("drop_trigger_3").enabled = t.destroy = true;
-    			}
-    		},
-    		{
-    			color: "#ff000099",
-    			enter_color: "#ff6b0099"
-    		}
-    	);
-
-    	void entities.apply(-1, {
-    		id: "unlock_drop_trigger_3",
-    		trigger_info: "Unlock Dropper 3"
-    	});
-
-    	triggers.add(800, 140, 30, 30, {}, {
-    		color: "#ff000099",
-    		enter_color: "#ff6b0099"
-    	});
-
-    	void entities.apply(-1, {
-    		id: "drop_trigger_2",
-    		trigger_info: "Dropper 2",
-    		enabled: false
-    	});
-
-    	triggers.add(800, 240, 30, 30, {}, {
-    		color: "#ff000099",
-    		enter_color: "#ff6b0099"
-    	});
-
-    	void entities.apply(-1, {
-    		id: "drop_trigger_3",
-    		trigger_info: "Dropper 3",
-    		enabled: false
-    	});
-
-    	triggers.add(
-    		800,
-    		340,
-    		30,
-    		30,
-    		{
-    			activate(t) {
-    				entities.gid("mult_1").enabled = t.destroy = entities.gid("unlock_mult_trigger_2").enabled = true;
-    			}
-    		},
-    		{
-    			color: "#ff000099",
-    			enter_color: "#ff6b0099"
-    		}
-    	);
-
-    	void entities.apply(-1, {
-    		id: "unlock_mult_trigger_1",
-    		trigger_info: "Unlock Multiplier 1"
-    	});
-
-    	triggers.add(
-    		800,
-    		340,
-    		30,
-    		30,
-    		{
-    			activate(t) {
-    				entities.gid("mult_2").enabled = t.destroy = entities.gid("unlock_mult_trigger_3").enabled = true;
-    			}
-    		},
-    		{
-    			color: "#ff000099",
-    			enter_color: "#ff6b0099"
-    		}
-    	);
-
-    	void entities.apply(-1, {
-    		id: "unlock_mult_trigger_2",
-    		trigger_info: "Unlock Multiplier 2",
-    		enabled: false
-    	});
-
-    	triggers.add(
-    		800,
-    		340,
-    		30,
-    		30,
-    		{
-    			activate(t) {
-    				entities.gid("mult_3").enabled = t.destroy = true;
-    			}
-    		},
-    		{
-    			color: "#ff000099",
-    			enter_color: "#ff6b0099"
-    		}
-    	);
-
-    	void entities.apply(-1, {
-    		id: "unlock_mult_trigger_3",
-    		trigger_info: "Unlock Multiplier 3",
-    		enabled: false
-    	});
-
-    	//#endregion
-    	//#region | Colliders
-    	const colliders = {
-    		list: [],
-    		add(x = 10, y = 10, w = 10, h = 10, on_hit = col => {
-    			
-    		}, extra = { color: "#0000ff55", fill: true, width: 1 }) {
-    			entities.add({
-    				tag: "collider",
-    				x,
-    				y,
-    				w,
-    				h,
-    				on_hit,
-    				hit: false,
-    				color: extra.color ?? "#00000000",
-    				fill: extra.fill ?? true,
-    				width: extra.width ?? 1
-    			});
-    		}
-    	};
-
-    	colliders.add(
-    		860,
-    		510,
-    		120,
-    		70,
-    		() => {
-    			
-    		},
-    		{ color: "#222" }
-    	);
-
-    	void entities.apply(-1, { id: "collector_block" });
-
-    	colliders.add(
-    		895,
-    		510,
-    		50,
-    		10,
-    		() => {
-    			
-    		},
-    		{ color: "#444" }
-    	);
-
-    	void entities.apply(-1, { id: "collector_block_door" });
-
-    	colliders.add(
-    		895,
-    		20,
-    		50,
-    		490,
-    		() => {
-    			
-    		},
-    		{ color: "#555" }
-    	);
-
-    	void entities.apply(-1, { id: "conveyor_1" });
-    	entities.add({ tag: "orbs", list: [], ticks: 0 });
-    	const orbs = entities.list.at(-1);
-
-    	colliders.add(
-    		835,
-    		40,
-    		100,
-    		30,
-    		() => {
-    			
-    		},
-    		{ color: "#444" }
-    	);
-
-    	void entities.apply(-1, {
-    		id: "dropper_1",
-    		tag: "collider dropper",
-    		drop_at: { x: 920, y: 55 }
-    	});
-
-    	colliders.add(
-    		835,
-    		140,
-    		100,
-    		30,
-    		() => {
-    			
-    		},
-    		{ color: "#444" }
-    	);
-
-    	void entities.apply(-1, {
-    		id: "dropper_2",
-    		tag: "collider dropper",
-    		enabled: false,
-    		drop_at: { x: 920, y: 155 }
-    	});
-
-    	colliders.add(
-    		835,
-    		240,
-    		100,
-    		30,
-    		() => {
-    			
-    		},
-    		{ color: "#444" }
-    	);
-
-    	void entities.apply(-1, {
-    		id: "dropper_3",
-    		tag: "collider dropper",
-    		enabled: false,
-    		drop_at: { x: 920, y: 255 }
-    	});
-
-    	colliders.add(
-    		890,
-    		350,
-    		60,
-    		15,
-    		() => {
-    			
-    		},
-    		{ color: "#444" }
-    	);
-
-    	void entities.apply(-1, {
-    		id: "mult_1",
-    		tag: "collider multiplier",
-    		xy: "y",
-    		enabled: false
-    	});
-
-    	colliders.add(
-    		890,
-    		400,
-    		60,
-    		15,
-    		() => {
-    			
-    		},
-    		{ color: "#444" }
-    	);
-
-    	void entities.apply(-1, {
-    		id: "mult_2",
-    		tag: "collider multiplier",
-    		xy: "y",
-    		enabled: false
-    	});
-
-    	colliders.add(
-    		890,
-    		450,
-    		60,
-    		15,
-    		() => {
-    			
-    		},
-    		{ color: "#444" }
-    	);
-
-    	void entities.apply(-1, {
-    		id: "mult_3",
-    		tag: "collider multiplier",
-    		xy: "y",
-    		enabled: false
-    	});
-
-    	//#endregion
-    	//#region | Controller / Key Events
-    	const contr = {
-    		a: false,
-    		d: false,
-    		w: false,
-    		s: false,
-    		e: false,
-    		get x() {
-    			const horz = (this.a ? -1 : 0) + (this.d ? 1 : 0);
-    			const vert = (this.w ? -1 : 0) + (this.s ? 1 : 0);
-    			if (horz != 0 && vert != 0) return 0.707 * horz;
-    			return horz;
-    		},
-    		get y() {
-    			const horz = (this.a ? -1 : 0) + (this.d ? 1 : 0);
-    			const vert = (this.w ? -1 : 0) + (this.s ? 1 : 0);
-    			if (horz != 0 && vert != 0) return 0.707 * vert;
-    			return vert;
-    		}
-    	};
-
+    	//#region | Key Events
     	document.onkeydown = ({ key }) => {
     		if (key == "a" && !contr.a) contr.a = true;
     		if (key == "d" && !contr.d) contr.d = true;
@@ -1384,15 +893,8 @@ var app = (function () {
 
     	function canvas_1_binding($$value) {
     		binding_callbacks[$$value ? 'unshift' : 'push'](() => {
-    			canvas = $$value;
-    			$$invalidate(1, canvas);
-    		});
-    	}
-
-    	function div_binding($$value) {
-    		binding_callbacks[$$value ? 'unshift' : 'push'](() => {
-    			trigger_info = $$value;
-    			$$invalidate(3, trigger_info);
+    			$canvas = $$value;
+    			canvas.set($canvas);
     		});
     	}
 
@@ -1408,10 +910,16 @@ var app = (function () {
     		timer,
     		job_m,
     		mouse,
+    		player,
+    		contr,
+    		canvas,
     		cash,
     		draw,
+    		entity_m,
+    		Entity,
+    		comps: Components,
+    		entities,
     		main,
-    		canvas,
     		ctx,
     		pause,
     		step,
@@ -1419,47 +927,24 @@ var app = (function () {
     		w,
     		h,
     		main_loop,
-    		check_overlap,
-    		player,
-    		entities,
-    		orb_lvl_colors,
-    		multiply,
-    		on_trigger,
-    		trigger_info,
-    		set_trigger_info,
-    		triggers,
-    		colliders,
-    		orbs,
-    		contr,
+    		$canvas,
     		$cash
     	});
 
     	$$self.$inject_state = $$props => {
     		if ('main' in $$props) $$invalidate(0, main = $$props.main);
-    		if ('canvas' in $$props) $$invalidate(1, canvas = $$props.canvas);
     		if ('ctx' in $$props) ctx = $$props.ctx;
     		if ('pause' in $$props) pause = $$props.pause;
     		if ('step' in $$props) step = $$props.step;
     		if ('w' in $$props) w = $$props.w;
     		if ('h' in $$props) h = $$props.h;
-    		if ('on_trigger' in $$props) $$invalidate(2, on_trigger = $$props.on_trigger);
-    		if ('trigger_info' in $$props) $$invalidate(3, trigger_info = $$props.trigger_info);
     	};
 
     	if ($$props && "$$inject" in $$props) {
     		$$self.$inject_state($$props.$$inject);
     	}
 
-    	return [
-    		main,
-    		canvas,
-    		on_trigger,
-    		trigger_info,
-    		$cash,
-    		canvas_1_binding,
-    		div_binding,
-    		main_1_binding
-    	];
+    	return [main, $canvas, $cash, canvas_1_binding, main_1_binding];
     }
 
     class Game extends SvelteComponentDev {
