@@ -1,3 +1,6 @@
+## v0.4.1
+- Made game view scale fully
+
 ## v0.4
 - Minimum viable product
 
