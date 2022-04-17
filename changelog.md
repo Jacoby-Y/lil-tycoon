@@ -1,3 +1,6 @@
+## v0.4.2
+- Removed debug things
+
 ## v0.4.1
 - Made game view scale fully
 

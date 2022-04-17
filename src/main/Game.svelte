@@ -242,7 +242,7 @@
 		else if (key == "s" && !contr.s) contr.s = true;
 		else if (key == "e" && !contr.e) (contr.e = true, press_e())
 		// else if (key == "e") press_e();
-		else if (key == "v") entity_m.all_comps("Dropper").forEach(d => d.ticks=0);
+		// else if (key == "v") entity_m.all_comps("Dropper").forEach(d => d.ticks=0);
 	}
 	document.onkeyup = ({ key })=>{
 		if (key == "a") contr.a = false;
@@ -250,10 +250,10 @@
 		else if (key == "w") contr.w = false;
 		else if (key == "s") contr.s = false;
 		else if (key == "e") contr.e = false;
-		else if (key == "c") $cash += 100;
-		else if (key == "z") step = true;
-		else if (key == "x") pause = !pause;
-		else if (key == "l") console.log(player);
+		// else if (key == "c") $cash += 100;
+		// else if (key == "z") step = true;
+		// else if (key == "x") pause = !pause;
+		// else if (key == "l") console.log(player);
 	}
 	window.onblur = ()=> {
 		contr.a = contr.d = contr.w = contr.s = false;
