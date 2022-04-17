@@ -7,12 +7,11 @@
 	import entities from "../entities.json";
 	import { fnum } from "../utils/utils.js";
 	
-	const plant_png = new Image(40, 60);
-	plant_png.src = "../assets/plant.png";
+	let plant_png;
 	let got_plant = false;
+	$: console.log(plant_png);
 
-	const hampter_png = new Image(40, 60);
-	hampter_png.src = "../assets/hampter.png";
+	let hampter_png;
 	let got_hampter = false;
 
 	//#region | Canvas
@@ -176,8 +175,10 @@
 		entity_m.update();
 		player.draw();
 
-		got_plant && draw.image(plant_png, 50,420, 80,120);
-		got_hampter && draw.image(hampter_png, 0,500, 100,100);
+		// try {
+			got_plant && draw.image(plant_png, 50,420, 80,120);
+			got_hampter && draw.image(hampter_png, 0,500, 100,100);
+		// } catch (err) { }
 
 		set_trig_hint(closest_trig(player));
 	}
@@ -250,7 +251,7 @@
 		else if (key == "w") contr.w = false;
 		else if (key == "s") contr.s = false;
 		else if (key == "e") contr.e = false;
-		// else if (key == "c") $cash += 100;
+		else if (key == "c") $cash += 100;
 		// else if (key == "z") step = true;
 		// else if (key == "x") pause = !pause;
 		// else if (key == "l") console.log(player);
@@ -267,6 +268,9 @@
 	<canvas bind:this={$canvas}></canvas>
 	<h3 id="cash">Cash: {fnum($cash)}</h3>
 	<div id="trigger-hint" bind:this={trig_hint}></div>
+	<img bind:this={plant_png} src="./assets/plant.png" alt="Plant">
+	<img bind:this={hampter_png} src="./assets/hampter.png" alt="Hampter">
+
 </main>
 
 <style>
@@ -298,5 +302,8 @@
 		left: 0;
 		padding: 0.5rem 0.7rem;
 		color: white;
+	}
+	img {
+		display: none;
 	}
 </style>

@@ -1,3 +1,6 @@
+## v0.4.3
+- Fixed images not loading
+
 ## v0.4.2
 - Removed debug things
 
