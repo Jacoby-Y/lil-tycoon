@@ -19,6 +19,10 @@ const rect = (x,y, w,h, color, fill=true, l_width=1)=>{
 	if (fill) ctx.fillRect(x,y, w,h);
 	else ctx.strokeRect(x,y, w,h);
 }
+const image = (img, sx=0, sy=0, sWidth=100, sHeight=100)=>{
+	ctx.drawImage(img, sx, sy, sWidth, sHeight);
+}
+
 const new_path = (...pts)=>{
 	let build = [];
 	for (let i = 0; i < pts.length; i += 2) {
@@ -44,6 +48,7 @@ const path = (points=[], color="black", fill=true, l_width=1)=>{
 	if (fill) ctx.fill();
 	else ctx.stroke();
 }
+
 const transform = (x=0,y=0, ang=0)=>{
 	ctx.translate(x,y);
 	ctx.rotate(ang);
@@ -56,6 +61,7 @@ export default {
 	set_ctx,
 	circle,
 	rect,
+	image,
 	new_path,
 	path,
 	transform,

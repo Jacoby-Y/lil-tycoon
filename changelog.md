@@ -1,3 +1,6 @@
+## v0.4
+- Minimum viable product
+
 ## v0.3
 - Reworking entire ECS System
 

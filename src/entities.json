@@ -1,5 +1,46 @@
 [
-	{ "id": "test_trigger", "Position": [100, 100], "Trigger": [50, 50] },
+	{ "id": "test_trigger", "Position": [100, 150], "Trigger": [50, 50, {}, "@html <b>Testing</b> testing 1 2 3"] },
+	{ "id": "buy_drop_1", "Position": [800, 200], "Trigger": [30, 30, {}, "Buy another dropper ($50)"] },
+	{ "id": "upgr_drop_1", "enabled": false, "Position": [800, 200], "Trigger": [30, 30, {}, "Upgrade dropper speed ($50)\n[120 → 115]"] },
+	{ "id": "spawn_drop_1", "Position": [760, 200], "Trigger": [30, 30, {}, "Spawn orbs!"], "Graphic": [] },
+	{ "id": "buy_mult_1", "Position": [835, 405], "Trigger": [30, 30, {}, "Buy an upgrader ($150)"] },
+	
+	{ "id": "unlock_conveyor", "Position": [575, 160], "Trigger": [30, 30, {}, "Buy second conveyor ($100)"] },
+	
+	{ "id": "buy_drop_2", "enabled": false, "Position": [575, 160], "Trigger": [30, 30, {}, "Buy another dropper ($250)"] },
+	{ "id": "upgr_drop_2", "enabled": false, "Position": [575, 160], "Trigger": [30, 30, {}, "Upgrade dropper speed ($100)\n[120 → 115]"] },
+	{ "id": "buy_mult_2", "enabled": false, "Position": [770, 120], "Trigger": [30, 30, {}, "Buy an upgrader ($200)"] },
+	{ "id": "spawn_drop_2", "enabled": false, "Position": [575, 200], "Trigger": [30, 30, {}, "Spawn orbs!"], "Graphic": [] },
+	
+	{ "id": "egg", "enabled": false, "Position": [957, 468], "Trigger": [35, 35, {}, "Nothing to see here..."], "Graphic": [] },
+	
+	{ "id": "dropper_1", "tag": "drop_group_1", "Position": [860, 150], "Collider": [75, 40], "Dropper": [920, 170], "Graphic": [] },
+	{ "id": "dropper_2", "tag": "drop_group_1", "enabled": false, "Position": [860, 195], "Collider": [75, 40], "Dropper": [920, 215], "Graphic": [] },
+	{ "id": "dropper_3", "tag": "drop_group_1", "enabled": false, "Position": [860, 240], "Collider": [75, 40], "Dropper": [920, 260], "Graphic": [] },
+	{ "id": "dropper_4", "tag": "drop_group_1", "enabled": false, "Position": [860, 285], "Collider": [75, 40], "Dropper": [920, 306], "Graphic": [] },
+	
+	{ "id": "dropper_5", "tag": "drop_group_2", "enabled": false, "Position": [500, 65], "Collider": [40, 75], "Dropper": [520, 80], "Graphic": [] },
+	{ "id": "dropper_6", "tag": "drop_group_2", "enabled": false, "Position": [545, 65], "Collider": [40, 75], "Dropper": [565, 80], "Graphic": [] },
+	{ "id": "dropper_7", "tag": "drop_group_2", "enabled": false, "Position": [590, 65], "Collider": [40, 75], "Dropper": [605, 80], "Graphic": [] },
+	{ "id": "dropper_8", "tag": "drop_group_2", "enabled": false, "Position": [635, 65], "Collider": [40, 75], "Dropper": [650, 80], "Graphic": [] },
 
-	{ "id": "dropper_1", "Position": [860, 215], "Collider": [75, 40] }
+	{ "id": "mult_1", "tag": "mult_group_1", "enabled": false, "Position": [890, 380], "Upgrader": ["y"], "Collider": [60, 25, "#"] },
+	{ "id": "mult_2", "tag": "mult_group_1", "enabled": false, "Position": [890, 405], "Upgrader": ["y"], "Collider": [60, 25, "#"] },
+	{ "id": "mult_3", "tag": "mult_group_1", "enabled": false, "Position": [890, 430], "Upgrader": ["y"], "Collider": [60, 25, "#"] },
+
+	{ "id": "mult_4", "tag": "mult_group_2", "enabled": false, "Position": [745, 50], "Upgrader": ["x"], "Collider": [25, 60, "#"] },
+	{ "id": "mult_5", "tag": "mult_group_2", "enabled": false, "Position": [770, 50], "Upgrader": ["x"], "Collider": [25, 60, "#"] },
+	{ "id": "mult_6", "tag": "mult_group_2", "enabled": false, "Position": [795, 50], "Upgrader": ["x"], "Collider": [25, 60, "#"] },
+
+	{ "id": "orb_m", "OrbManager": [] },
+	
+	{ "id": "conveyor_1", "Position": [895, 55], "Collider": [50, 455, "#777"] },
+	{ "id": "conveyor_2", "enabled": false, "Position": [475, 55], "Collider": [420, 50, "#777"] },
+
+	{ "id": "collector_box", "Position": [895, 510], "Collider": [50, 10, "#444"] },
+	{ "id": "collector_box_door", "Position": [860, 510], "Collider": [120, 70, "#222"] },
+
+	{ "id": "plant", "enabled": false, "Position": [68,510], "Collider": [35, 30, "#"] },
+	{ "id": "buy_plant", "Position": [120,510], "Trigger": [30, 30, {}, "Buy decor ($10k)"], "Graphic": [] },
+	{ "id": "egg_col", "enabled": false, "Position": [0,565], "Collider": [85, 35, "#"] }
 ]

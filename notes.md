@@ -1,7 +1,3 @@
-Conveyor 1: 895, 55 | 50, 455
-Conveyor 2: 55, 55 | 890, 55
-
-Dropper 1: 860, 215 | 30, 40
-    890, 220 | 45, 30
-Dropper 2: 860, 150 | 30, 40
-    890, 155 | 45, 30
+Perf:
+- 3% GC |> multiply
+- 4% all_with_comp

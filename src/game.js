@@ -41,7 +41,7 @@ export const mouse = {
 }
 
 export const player = {
-	x: 50, y: 50, size: 30,
+	x: 500, y: 300, size: 30,
 	update() {
 		const [ pw, ph ] = [ this.size, this.size ];
 		
@@ -72,4 +72,9 @@ export const contr = {
 			return 0.707 * vert;
 		return vert;
 	}
+}
+
+export const drop_speeds = {
+	drop_group_1: 120,
+	drop_group_2: 120,
 }
